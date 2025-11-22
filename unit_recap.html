@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2 class="mb-4">📊 Rekap Pembayaran Unit {{ unit }}</h2>
+    <hr>
+
+    {# --- FORM FILTER DIMULAI DI SINI --- #}
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-secondary text-white">
+            Filter Data Transaksi
+        </div>
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('unit_recap', unit=unit) }}">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label for="start_date" class="form-label">Tanggal Mulai</label>
+                        <input type="date" class="form-control" id="start_date" name="start_date" value="{{ start_date | default('', true) }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="end_date" class="form-label">Tanggal Sampai</label>
+                        <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date | default('', true) }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="description" class="form-label">Keterangan</label>
+                        <select class="form-select" id="description" name="description">
+                            <option value="">Semua Keterangan</option>
+                            {% for desc in unique_descriptions %}
+                                <option value="{{ desc }}" {% if description == desc %}selected{% endif %}>{{ desc }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="method" class="form-label">Metode</label>
+                        <select class="form-select" id="method" name="method">
+                            <option value="">Semua Metode</option>
+                            <option value="Cash" {% if method == 'Cash' %}selected{% endif %}>Cash</option>
+                            <option value="Saldo Ortu" {% if method == 'Saldo Ortu' %}selected{% endif %}>Saldo Orang Tua</option>
+                        </select>
+                    </div>
+                    <div class="col-md-12 text-end">
+                        <button type="submit" class="btn btn-primary">Terapkan Filter</button>
+                        <a href="{{ url_for('unit_recap', unit=unit) }}" class="btn btn-outline-secondary">Reset Filter</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    {# --- FORM FILTER SELESAI DI SINI --- #}
+
+    <div class="row mb-4">
+        <!-- Card Saldo Kas Tersedia (NEW) -->
+        <div class="col-md-4">
+            <div class="card bg-primary text-white shadow">
+                <div class="card-body">
+                    <h5 class="card-title">💰 Saldo Kas Tersedia</h5>
+                    <p class="card-text fs-3">Rp {{ "{:,.2f}".format(available_cash) | replace(',', '_') | replace('.', ',') | replace('_', '.') }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Card Total Cash (IN) -->
+        <div class="col-md-4">
+            <div class="card bg-success text-white shadow">
+                <div class="card-body">
+                    <h5 class="card-title">💵 Total CASH (IN)</h5>
+                    <p class="card-text fs-3">Rp {{ "{:,.2f}".format(total_cash) | replace(',', '_') | replace('.', ',') | replace('_', '.') }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card Total Saldo Ortu -->
+        <div class="col-md-4">
+            <div class="card bg-warning text-dark shadow">
+                <div class="card-body">
+                    <h5 class="card-title">💳 Total Saldo Ortu (IN)</h5>
+                    <p class="card-text fs-3">Rp {{ "{:,.2f}".format(total_saldo) | replace(',', '_') | replace('.', ',') | replace('_', '.') }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Kolom Form Serah Terima -->
+        <div class="col-md-5">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">➡️ Catat Serah Terima Kas (Disbursement)</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-danger">**Saldo Tersedia saat ini: Rp {{ "{:,.2f}".format(available_cash) | replace(',', '_') | replace('.', ',') | replace('_', '.') }}</p>
+                    <form method="POST" action="{{ url_for('disburse_cash', unit=unit) }}">
+                        <div class="mb-3">
+                            <label for="amount" class="form-label">Jumlah Uang Diserahkan (Rp)</label>
+                            <input type="number" step="1000" min="1000" class="form-control" id="amount" name="amount" required placeholder="Contoh: 500000">
+                        </div>
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Keterangan Serah Terima</label>
+                            <input type="text" class="form-control" id="notes" name="notes" required placeholder="Contoh: Serah terima ke Kepala Sekolah">
+                        </div>
+                        <button type="submit" class="btn btn-danger w-100">Catat Serah Terima & Kurangi Saldo</button>
+                    </form>
+                </div>
+            </div>
+            
+            <h5 class="mt-4">Riwayat Serah Terima (10 Terakhir)</h5>
+            <ul class="list-group">
+                {% for d in disbursements %}
+                <li class="list-group-item d-flex justify-content-between align-items-center list-group-item-light">
+                    <div>
+                        **Rp {{ "{:,.2f}".format(d.amount) | replace(',', '_') | replace('.', ',') | replace('_', '.') }}**
+                        <br><small>{{ d.notes }}</small>
+                    </div>
+                    <span class="badge bg-secondary rounded-pill">{{ d.disbursement_date.strftime('%d-%m-%Y %H:%M') }}</span>
+                </li>
+                {% else %}
+                <li class="list-group-item">Belum ada riwayat serah terima kas.</li>
+                {% endfor %}
+            </ul>
+        </div>
+        
+        <!-- Kolom Detail Transaksi (Tabel) -->
+        <div class="col-md-7">
+            <h5 class="mt-0">Detail 100 Transaksi Terakhir (Unit {{ unit }})</h5>
+            <div class="table-responsive">
+                <table class="table table-striped table-bordered table-sm">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>#</th>
+                            <th>Tanggal</th>
+                            <th>Siswa</th>
+                            <th>Keterangan</th>
+                            <th>Metode</th>
+                            <th>Jumlah (Rp)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tx in transactions %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td>{{ tx.transaction_date.strftime('%d-%m-%Y %H:%M') }}</td>
+                            <td>{{ tx.student_name }}</td>
+                            <td>{{ tx.description }}</td>
+                            <td><span class="badge bg-{% if tx.method == 'Cash' %}success{% else %}warning{% endif %}">{{ tx.method }}</span></td>
+                            <td class="text-end">{{ "{:,.2f}".format(tx.amount) | replace(',', '_') | replace('.', ',') | replace('_', '.') }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            {% if not transactions %}
+                <div class="alert alert-info">Belum ada data transaksi yang diekstrak untuk Unit {{ unit }}. Silakan upload di Dashboard.</div>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}
