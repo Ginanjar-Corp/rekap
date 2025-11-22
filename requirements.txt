@@ -1,0 +1,8 @@
+Flask
+Flask-SQLAlchemy
+Flask-Login
+Werkzeug
+pdfplumber
+pandas
+# mysqlclient # Dihapus/dikomentari karena error kompilasi
+PyMySQL # Menggunakan driver murni Python sebagai gantinya
